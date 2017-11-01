@@ -9303,6 +9303,10 @@ jQuery.extend( {
 		return jQuery.get( url, data, callback, "json" );
 	},
 
+	postJSON: function( url, data, callback ) {
+		return jQuery.post( url, data, callback, "json" );
+	},
+
 	getScript: function( url, callback ) {
 		return jQuery.get( url, undefined, callback, "script" );
 	}

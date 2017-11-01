@@ -1,11 +1,21 @@
-<?php header('Content-Type: text/html; charset=utf-8');
+<?php require 'lib/config.php';
 
-require 'lib/config.inc';
-require 'lib/ClassLoader.inc';
+// -- run script command received 
+if($_REQUEST['livedebug_cmd'] == 'run') {
+    $script = $_REQUEST['livedebug_script'];
+    include LIVEDEBUG_TMP_RUN_PATH.$script;
+    unlink(LIVEDEBUG_TMP_RUN_PATH.$script);
+    die;
+}
+
+require 'lib/ClassLoader.php';
 
 $ld = new LD();
 $ld->processRequest($_REQUEST);
 
+$fs = $ld->getFSInstance();     // File Storage instance
+
+header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html class="h-100">
     <head>
@@ -17,13 +27,8 @@ $ld->processRequest($_REQUEST);
         <script src="js/ace.mode-php.js"></script>
         <script src="js/app.js"></script>
         <link rel="shortcut icon" href="img/icons/inbox.svg" />
-        <style>
-            .icon16 {width: 16px; margin-top: -3px; fill: red; }
-            .icon24 {width: 24px; margin-top: -3px; fill: red; }
-            .icon32 {width: 32px; margin-top: -3px; fill: red; }
-            .menuitem-icon {margin-left: -19px; margin-top: 5px; position: fixed; }
-        </style>
         <link rel="stylesheet" href="css/bootstrap.css" />
+        <link rel="stylesheet" href="css/app.css" />
     </head>
     <body class="h-100">
         <nav class="navbar navbar-expand-sm navbar-light fixed-top bg-light" style="background-color: #77dd77 !important">
@@ -33,14 +38,14 @@ $ld->processRequest($_REQUEST);
             </button>            
             <div class="collapse navbar-collapse" id="navbarCollapsePan">
                 <ul class="navbar-nav mr-auto">
-                    <li class="nav-item dropdown d-none">
+                    <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" onclick="return false" id="navbarFileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img class="icon16" src="img/icons/menu.svg" /> <?=$ld->getTranslatedCaption('mnuFile')?></a>
                         <div class="dropdown-menu" aria-labelledby="navbarFileDropdown">
-                            <a id="mnuFileNew" class="dropdown-item appMenuItem" href="#">
+                            <a id="mnuFileNew" class="dropdown-item appMenuItem" onclick="" href="#">
                                 <img class="icon16 menuitem-icon" src="img/icons/new-message.svg" />
                                 <?=$ld->getTranslatedCaption('mnuFileNew')?>
                             </a>
-                            <a id="mnuFileLoad" data-toggle="modal" data-target="#modalFileList" class="dropdown-item appMenuItem" href="#">
+                            <a id="mnuFileLoad" class="dropdown-item appMenuItem" href="#">
                                 <img class="icon16 menuitem-icon" src="img/icons/folder.svg" />
                                 <?=$ld->getTranslatedCaption('mnuFileLoad')?>
                             </a>
@@ -57,12 +62,28 @@ $ld->processRequest($_REQUEST);
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarRunModeDropdown">
                             <a id="mnuRunModeEval" class="dropdown-item appMenuItem" href="#">
-                                <?php if(defined('RUN_MODE') && RUN_MODE == 'eval') { ?><img class="icon16 menuitem-icon runmode-forced" src="img/icons/warning.svg" /><?php } ?> 
+                                <?php if(LIVEDEBUG_RUN_MODE == 'eval') { ?><img class="icon16 menuitem-icon runmode-forced" src="img/icons/pin.svg" /><?php } ?> 
                                 <?=$ld->getTranslatedCaption('mnuRunModeEval')?>
                             </a>
                             <a id="mnuRunModeFile" class="dropdown-item appMenuItem" href="#">
-                                <?php if(defined('RUN_MODE') && RUN_MODE == 'file') { ?><img class="icon16 menuitem-icon runmode-forced" src="img/icons/warning.svg" /><?php } ?> 
+                                <?php if(LIVEDEBUG_RUN_MODE == 'file') { ?><img class="icon16 menuitem-icon runmode-forced" src="img/icons/pin.svg" /><?php } ?> 
                                 <?=$ld->getTranslatedCaption('mnuRunModeFile')?>
+                            </a>
+                        </div>                    
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" onclick="return false" id="navbarViewDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <img class="icon16" src="img/icons/eye.svg" />
+                            <?=$ld->getTranslatedCaption('mnuView')?>
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="navbarViewDropdown">
+                            <a id="mnuViewSplit" class="dropdown-item appMenuItem" href="#">
+                                <img class="icon16 menuitem-icon" src="img/icons/copy.svg" />
+                                <?=$ld->getTranslatedCaption('mnuViewSplit')?>
+                            </a>
+                            <a id="mnuViewWide" class="dropdown-item appMenuItem" href="#">
+                                <img class="icon16 menuitem-icon" src="img/icons/document-landscape.svg" />
+                                <?=$ld->getTranslatedCaption('mnuViewWide')?>
                             </a>
                         </div>                    
                     </li>
@@ -79,16 +100,19 @@ $ld->processRequest($_REQUEST);
                             <div class="dropdown-divider"></div>
                         </div>                    
                     </li>
-                    <li class="nav-item"><a id="mnuRun" title="Выполнить код (F4)" class="nav-link appMenuItem" href="#"><strong><?=$ld->getTranslatedCaption('mnuRun')?></strong></a></li>
+                    <li class="nav-item"><a id="mnuRun" title="<?=$ld->getTranslatedCaption('txtRunCodeHint') ?>" class="nav-link appMenuItem" href="#"><strong><?=$ld->getTranslatedCaption('mnuRun')?></strong></a></li>
                 </ul>
             </div>
         </nav>
-        <div class="container h-100" style="padding-top: 80px; padding-bottom: 20px">
+        
+        <div class="container h-100" style="padding-top: 55px; padding-bottom: 20px">
             <div class="row h-100">
-                <div class="col-sm-6 h-100" style="border: 1px solid #777; padding-left: 0px">
-                    <div id="code" class="w-100 h-100"></div>
+                <div id="code_container" class="col-sm-6 h-100" style="padding-left: 0px">
+                    <div><?=$ld->getTranslatedCaption('txtPHPCode')?></div>
+                    <div id="code" class="w-100" style="border: 1px solid #777"></div>
                 </div>
-                <div class="col-sm-6 h-100" style="padding: 0px">
+                <div id="result_container" class="col-sm-6 h-100" style="padding: 0px">
+                    <div><?=$ld->getTranslatedCaption('txtResult')?></div>
                     <iframe id="run_result" name="run_result" src="about:blank" class="w-100" style="border: 1px solid #777"></iframe>
                 </div>
             </div>
@@ -99,20 +123,39 @@ $ld->processRequest($_REQUEST);
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><?=$ld->getTranslatedCaption('txtFileList')?></h5>
+                        <h5 id="txtSaveFile" class="modal-title"><?=$ld->getTranslatedCaption('txtSaveFile')?></h5>
+                        <h5 id="txtLoadFile" class="modal-title"><?=$ld->getTranslatedCaption('txtLoadFile')?></h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="<?=$ld->getTranslatedCaption('txtClose')?>">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
                     <div class="modal-body">
-                        <select class="w-100" size="10" id="select_file"></select>
+                        <p>
+                        <select class="form-control w-100" size="10" id="select_file" onclick="LiveDebugApp.onFileSelect(this)">
+                            <?php
+                                $fl = $fs->getFileList($ld->getUserID());
+                                foreach($fl as $fileitem) {
+                                    ?>
+                                    <option value="<?=$fileitem->getScope().'/'.$fileitem->getName()?>"><?=$fileitem->getScope().'/'.$fileitem->getName()?></option>
+                                    <?php
+                                }
+                            ?>
+                        </select>
+                        </p>
+                        <p>
+                            <input type="text" class="form-control w-100" name="filename" id="inpFileName" />
+                        </p>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-primary"><?=$ld->getTranslatedCaption('txtSave')?></button>
+                        <button type="button" id="btnLoadFile" onclick="LiveDebugApp.btnLoadFileClick()" class="btn btn-primary"><?=$ld->getTranslatedCaption('txtLoad')?></button>
+                        <button type="button" id="btnSaveFile" onclick="LiveDebugApp.btnSaveFileClick()" class="btn btn-primary"><?=$ld->getTranslatedCaption('txtSave')?></button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?=$ld->getTranslatedCaption('txtClose')?></button>
                     </div>
                 </div>
             </div>
         </div>
     </body>
+    <!-- JQuery v3.2.1 used.    See "http://jquery.com/" for more details.          -->
+    <!-- BootStrap v4 used.     See "https://getbootstrap.com/" for more details.   -->
+    <!-- Entypo iconset used.   See "http://www.entypo.com/" for more details.      -->
 </html>
