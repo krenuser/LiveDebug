@@ -77,6 +77,10 @@ header('Content-Type: text/html; charset=utf-8');
                             <?=$ld->getTranslatedCaption('mnuView')?>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarViewDropdown">
+                            <a id="mnuViewWideCode" class="dropdown-item appMenuItem" href="#">
+                                <img class="icon16 menuitem-icon" src="img/icons/code.svg" />
+                                <?=$ld->getTranslatedCaption('mnuViewWideCode')?>
+                            </a>
                             <a id="mnuViewSplit" class="dropdown-item appMenuItem" href="#">
                                 <img class="icon16 menuitem-icon" src="img/icons/copy.svg" />
                                 <?=$ld->getTranslatedCaption('mnuViewSplit')?>

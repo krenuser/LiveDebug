@@ -4,6 +4,7 @@ var LiveDebugApp = {
     cFileName: '',          // current file name
     cRunMode: 'file',       // file | eval
     cRunID: null,           // random 6-digit value to avoid overwriting of script file by multiple LiveDebug tabs in one browser
+    cViewMode: 'split',
     
     // -- init LiveDebug JS function
     init: function() {
@@ -38,9 +39,19 @@ var LiveDebugApp = {
             $('#mnuRunModeEval').addClass('disabled');
             $('#mnuRunModeFile').addClass('disabled');
         }
-        
+
         // -- clear Ace editor
         LiveDebugApp.clearDocument();
+
+        LiveDebugApp.editor.getSession().on("change", function(e) {
+            localStorage.setItem('sql', LiveDebugApp.editor.getValue());
+        });
+
+        if(localStorage.getItem('sql')) {
+            LiveDebugApp.editor.setValue(localStorage.getItem('sql'));
+        }
+
+        
     },
     
     // -- window resize handler
@@ -112,6 +123,9 @@ var LiveDebugApp = {
                 tmpform.appendTo(document.body);
                 tmpform.submit();
                 tmpform.remove();
+                if(LiveDebugApp.cViewMode == 'code') {
+                	LiveDebugApp.onMenuItemClick('mnuViewWide');
+                }
             break;
             // -- Run mode > Eval mode
             case 'mnuRunModeEval':
@@ -131,13 +145,24 @@ var LiveDebugApp = {
             break;
             // -- View > Wide mode
             case 'mnuViewWide':
-                $('#result_container').removeClass('col-sm-6').addClass('col-sm-12');
-                $('#code_container').removeClass('col-sm-6').addClass('d-none');
+                $('#result_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('col-sm-12');
+                $('#code_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('d-none');
+                LiveDebugApp.editor.resize();
+                LiveDebugApp.cViewMode = 'result';
             break;
             // -- View > Split mode
             case 'mnuViewSplit':
-                $('#result_container').removeClass('col-sm-12').addClass('col-sm-6');
-                $('#code_container').removeClass('d-none').addClass('col-sm-6');
+                $('#result_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('col-sm-6');
+                $('#code_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('col-sm-6');
+                LiveDebugApp.editor.resize();
+                LiveDebugApp.cViewMode = 'split';
+            break;
+            // -- View > Wide mode (code only)
+            case 'mnuViewWideCode':
+                $('#result_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('d-none');
+                $('#code_container').removeClass('col-sm-12 col-sm-6 d-none').addClass('col-sm-12');
+                LiveDebugApp.editor.resize();
+                LiveDebugApp.cViewMode = 'code';
             break;
         }
     },
